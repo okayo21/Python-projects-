@@ -1,0 +1,254 @@
+---
+title: "Final 2 Visualization"
+output:
+  word_document: default
+  html_document: default
+date: "2024-10-09"
+---
+
+## Datasource:https://www.kaggle.com/datasets/willianoliveiragibin/gender-economic-inequality
+Data if from Kaggle.com
+
+## Step 1:Importing data and Loading the necesary Libraries 
+
+```{r}
+# Step 1: Install and load necessary packages
+library(tidyverse)
+library(dplyr)
+library (ggplot2)
+library(ggplot2)
+library(dplyr)
+library(gganimate)
+library(plotly)
+# Step 2: Load the dataset
+data <- read.csv("Gender Economic Inequality.csv")
+summary(data)
+```
+
+## Step 2:Data Cleaning 
+
+```{r}
+
+# Step Check for missing values
+missing_values <- sum(is.na(data))
+print(paste("Total missing values:", missing_values))
+
+# Step Remove rows with missing values (if any)
+clean_data <- na.omit(data)
+
+# Step 5: Rename columns for easier usage
+clean_data <- clean_data %>%
+  rename(
+    Country = country, 
+    Code = Code, 
+    Year = Year, 
+    WageGap = `Gender.wage.gap..`
+  )
+
+# Convert columns to appropriate data types
+clean_data$Year <- as.numeric(clean_data$Year)
+clean_data$WageGap <- as.numeric(clean_data$WageGap)
+
+# Final Step: Review cleaned data structure
+str(clean_data)
+summary(clean_data)
+
+# Inspect the cleaned data
+head(clean_data)
+summary(clean_data)
+
+# Handle Duplicates (if necessary)
+# Check for duplicates
+duplicate_rows <- clean_data[duplicated(clean_data),]
+print(duplicate_rows)
+
+# Remove duplicate rows (if any)
+clean_data <- clean_data %>% distinct()
+
+# Filter data for specific years or countries (e.g., after year 2000)
+filtered_data <- clean_data %>% filter(Year >= 2000)
+
+```
+
+
+# Step 3 :Visualizations of Plots 
+
+## interactive plot using Code and Average WageGap for the top 10 countries
+
+```{r}
+# Calculate average WageGap per country
+avg_wage_gap <- clean_data %>%
+  group_by(Code, Country) %>%
+  summarize(AverageWageGap = mean(WageGap, na.rm = TRUE), .groups = 'drop') %>%
+  arrange(desc(AverageWageGap)) %>%  # Sort by average wage gap in descending order
+  top_n(10, AverageWageGap)  # Select top 10 countries
+
+# Create an interactive plot using Code and Average WageGap for the top 10 countries
+interactive_plot <- ggplot(avg_wage_gap, aes(x = Code, y = AverageWageGap, color = Country)) +
+  geom_point(size = 3) +  # Use points for better visibility
+  geom_line(aes(group = Country), size = 1) +  # Connect points with lines
+  labs(title = "Top 15 Countries by Gender Wage Gap",
+       x = "Country Code",
+       y = "Average Gender Wage Gap (%)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for better readability
+
+# Convert the static ggplot to an interactive plotly object
+interactive_plotly <- ggplotly(interactive_plot)
+
+# Display the interactive plot
+interactive_plotly
+
+```
+
+### Explanation of the plot 
+
+The visualization is a scatter chart that shows the average gender wage gap (%) of the ten countries in question. In this figure, the dots signify the countries; the y-axis depends on the wage gap values, and the x-axis depends on country codes. The chart's name suggests that it discusses the 15 best countries by gender wage gap, but only 10 countries are provided. The values vary from 22.5% of Brazil (BRA) to more than 30% of South Korea (KOR). The value for Great Britain (GBR) is relatively slightly smaller and equals 24%, the same for Germany (DEU) – around 25%, as for the Czech Republic (CZE).
+
+
+## Animated plot for Gender Wage Gap Over the years 
+
+```{r}
+
+# Example of filtering top 6 countries based on the latest available year
+latest_year <- clean_data %>%
+  filter(Year == max(Year))
+
+top_countries <- latest_year %>%
+  arrange(desc(WageGap)) %>%
+  slice_head(n = 6) %>%
+  pull(Country)
+
+# Filter the clean data for these top countries
+filtered_data <- clean_data %>%
+  filter(Country %in% top_countries)
+
+# Create the animated plot using transition_time
+animation <- ggplot(filtered_data, aes(x = Year, y = WageGap, group = Country, color = Country)) +
+  geom_line(linewidth = 1) +  # Use 'linewidth' instead of 'size'
+  geom_point(size = 12, alpha = 1.0) +  # Points for each year
+  labs(title = 'Gender Wage Gap Over Years: {frame_time}', 
+       x = 'Year', 
+       y = 'Gender Wage Gap (%)') +
+  scale_color_manual(values = rainbow(length(unique(filtered_data$Country)))) +  # Set custom colors
+  transition_time(Year) +  # Alternative animation function
+  ease_aes('linear')          # Linear easing
+
+# Render the animation
+animate(animation, renderer = gifski_renderer(), nframes = 100, fps = 10)
+```
+
+### Explanation of the plot 
+
+The chart illustrates the gender wage gap in six countries (Czech Republic, Finland, Pakistan, Portugal, South Korea, and Vietnam) for some years. The y-axis includes the percentage of the gender wage differential, while the X-axis spans from 2000 to 2016. The round nodes represent the countries, each of which has its colour according to the legend. The size of the round node is proportional to the size of the Wage Gap data. For instance, the yellow bubble (Finland) presents about a 20% difference in wages in 2004, with the larger size indicating its relative importance. 
+
+
+## Histogram for Wage Gap
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+
+# Create a histogram for WageGap
+wage_gap_histogram <- ggplot(clean_data, aes(x = WageGap)) +
+  geom_histogram(binwidth = 5, fill = "steelblue", color = "white", alpha = 0.7) +  # Set bin width, fill color, and border
+  labs(title = "Distribution of Gender Wage Gap",
+       x = "Gender Wage Gap (%)",
+       y = "Frequency") +
+  theme_minimal() +  # Use a minimal theme
+  theme(text = element_text(size = 12),  # Set text size
+        plot.title = element_text(hjust = 0.5, size = 16),  # Center and size the title
+        axis.title.x = element_text(size = 14),  # Size for x-axis title
+        axis.title.y = element_text(size = 14),  # Size for y-axis title
+        panel.grid.major = element_line(size = 0.5, linetype = 'dashed', color = "grey"),  # Customize grid
+        panel.grid.minor = element_blank())  # Remove minor grid
+
+# Display the histogram
+print(wage_gap_histogram)
+
+```
+
+
+### Explanation of the plot 
+
+This histogram represents the variations in the gender wage gap in percentages across one country at different times or in multiple countries at once. On the horizontal axis, the gender wage gap is marked as -20% to 40 %, whereas on the vertical axis, the range of frequency of occurrence is given. The most frequent wage gap is 0% to 10%, with more than 70 cases, and the range of 10% to 20% is less frequent but has about 60 cases. Otherwise, there are fewer observations of wages more than 20 per cent, and some of the observation less even gives a negative wage gap, which means that women earn more than men in those observations, whereas such observations are very few.
+
+
+## Scatter plot showing gender wage gap,Country and Year 
+
+```{r}
+# Step 3: Create a summary data frame for the top 14 countries
+top_countries <- filtered_data %>%
+  group_by(Country) %>%
+  summarise(AvgWageGap = mean(WageGap, na.rm = TRUE)) %>%
+  arrange(desc(AvgWageGap)) %>%
+  slice_head(n = 14) %>%
+  pull(Country)
+
+# Filter the original data to include only the top 14 countries
+top_country_data <- filtered_data %>% filter(Country %in% top_countries)
+
+# Create a data frame with the strategic data points for each country
+# Place the label at either the highest or lowest Wage Gap value for each country
+strategic_data <- top_country_data %>%
+  group_by(Country) %>%
+  filter(WageGap == max(WageGap) | WageGap == min(WageGap))
+
+# Create scatter plot for the top 6 countries
+ggplot(top_country_data, aes(x = Year, y = WageGap, color = Country)) +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_line(aes(group = interaction(Country, Code)), alpha = 0.5) +  # Ensure proper connection of lines
+  geom_text(data = strategic_data, aes(label = Code), 
+            vjust = ifelse(strategic_data$WageGap == max(strategic_data$WageGap), -1, 1.5), 
+            hjust = 0.5, size = 3, check_overlap = TRUE) +  # Add country code at strategic positions
+  labs(title = "Gender Wage Gap Trends for Top 6 Countries (2000 onwards)",
+       x = "Year",
+       y = "Gender Wage Gap (%)",
+       color = "Country") +
+  theme_minimal() +
+  theme(legend.position = "right") +
+  scale_x_continuous(expand = expansion(mult = c(0.05, 0.1)))  # Add some extra space on the right for text
+
+```
+
+## Explanation of the plot 
+
+The plot represents the gender wage gap trends in six countries (Czechia, Finland, Pakistan, Portugal, South Korea, and Vietnam) starting in 2000. On the Y-axis, we have the gender pay disparity as a percentage, while on the X-axis, we have the year. The wage gap trend is high, around 30%, and reaches nearly 2008. For example, the gap of Finland (FIN) stays around 20% rather obviously, whereas the Czechia (CZE) swings more – above 15%. Pakistan (PAK) rises to about 11 percent by 2015. Portugal's PRT has lower values, reaching around 8 per cent after 2010. Vietnam (VNM) remains relatively stable at nearly 10 %.
+
+
+
+## Box Plot of Wage Gaps by Country
+
+```{r}
+#  Box Plot of Wage Gaps by Country
+ggplot(top_country_data, aes(x = reorder(Country, WageGap, FUN = median), y = WageGap, fill = Country)) +
+  geom_boxplot(outlier.shape = 21, outlier.color = "red", outlier.size = 3, color = "black", lwd = 1) +  # Thicker borders, colored outliers
+  scale_fill_manual(values = colorRampPalette(c("#00AFBB", "#E7B800", "#FC4E07"))(14)) +  # Gradient color palette
+  labs(title = "Box Plot of Gender Wage Gap by Country (2000 onwards)",
+       x = "Country",
+       y = "Gender Wage Gap (%)") +
+  theme_minimal(base_size = 14) +  # Set base font size for a cleaner look
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 12, face = "bold", color = "#333333"),  # Enhanced axis text style
+    axis.text.y = element_text(size = 12, face = "bold", color = "#333333"),  # Enhanced y-axis text
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 18, color = "#222222"),  # Center and bold the title
+    panel.grid.major = element_line(color = "grey90"),  # Light grid lines
+    panel.grid.minor = element_blank(),  # Remove minor grid lines for a cleaner look
+    legend.position = "none",  # Remove legend since the box colors are already labeled
+    panel.background = element_rect(fill = "#F5F5F5", color = NA),  # Light gray background
+    plot.background = element_rect(fill = "#FFFFFF", color = NA),  # White background for the plot area
+    panel.border = element_rect(color = "black", fill = NA, size = 1)  # Add a black border around the panel
+  ) +
+  stat_summary(fun = "mean", geom = "point", shape = 23, size = 3, fill = "white", color = "black") +  # Add mean points
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black", size = 0.5)  # Add a horizontal line at y=0 for reference
+
+
+```
+
+
+## Explnation of the plot 
+
+
+The box plot represents the average percentage of the gender wage gap for six countries: Vietnam, Portugal, Pakistan, Finland, Czech Republic and South Korea, starting from the year 2000. Vietnam and Portugal have the lowest wrinkles with a median wage gap of less than 10%kles. Pakistan has a slightly higher median, nearly 10%, but with slightly more spread. The comparable gender pay gap in Finland is closest to 18 %, and the range is more comprehensive. Czechia has an approximate median of 15 % indefinitely; however, South Korea has the highest median wage gap of about 30%. The diamond symbols depict the average scores for each country.
+
+
